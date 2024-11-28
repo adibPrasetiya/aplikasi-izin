@@ -1,0 +1,64 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Users {
+  username          String          @id @unique @db.VarChar(100)
+  email             String          @unique @db.VarChar(100)
+  password          String          @db.VarChar(100)
+  passwordExpiredAt DateTime
+  name              String          @db.VarChar(100)
+  role              Roles           @default(STAFF)
+  flagActive        Boolean         @default(false)
+  departement       Departements    @relation(fields: [departementId], references: [departementId])
+  departementId     String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  LeaveRequests     LeaveRequests[]
+  ManagedRequests   LeaveRequests[] @relation("ManagerLeaveRequests")
+}
+
+model Departements {
+  departementId String  @id @default(uuid())
+  name          String  @unique @db.VarChar(150)
+  email         String  @unique @db.VarChar(100)
+  Users         Users[]
+}
+
+model LeaveRequests {
+  id        String      @id @default(uuid())
+  user      Users       @relation(fields: [userId], references: [username])
+  userId    String
+  manager   Users?      @relation("ManagerLeaveRequests", fields: [managerId], references: [username])
+  managerId String?
+  status    LeaveStatus @default(DRAFT)
+  startDate DateTime
+  endDate   DateTime
+  reason    String      @db.Text
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+enum LeaveStatus {
+  DRAFT    @map("draft")
+  TERKIRIM @map("terkirim")
+  DITOLAK  @map("ditolak")
+  DITERIMA @map("diterima")
+}
+
+enum Roles {
+  STAFF   @map("staff")
+  MANAJER @map("manajer")
+  ADMIN   @map("admin")
+}
