@@ -4,7 +4,6 @@ import jwtHandler from "../utils/jwt-handler.js";
 import passwordHashHandler from "../utils/password-hash-handler.js";
 import {
   createUserValidation,
-  getUserValidation,
   loginUserValidation,
   updateUserValidation,
 } from "../validations/user-validation.js";
