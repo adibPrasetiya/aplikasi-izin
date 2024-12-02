@@ -5,7 +5,8 @@
   "main": "src/main.js",
   "type": "module",
   "scripts": {
-    "test": "jest -i"
+    "test": "jest -i",
+    "start": "node ./src/main.js"
   },
   "jest": {
     "transform": {
@@ -22,6 +23,7 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "joi": "^17.13.3",

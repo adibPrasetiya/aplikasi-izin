@@ -7,4 +7,4 @@ export const publicRoutes = new Router();
 publicRoutes.post("/api/v1/user", userController.create);
 publicRoutes.post("/api/v1/user/login", userController.login);
 
-publicRoutes.get("/api/v1/departement", departementController.search);
+publicRoutes.get("/api/v1/departement/search", departementController.search);

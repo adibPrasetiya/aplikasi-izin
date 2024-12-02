@@ -1,4 +1,4 @@
-const crypto = require("crypto");
+import crypto from "crypto";
 
 /**
  * Generate an MD5 hash of a password and include expiration date

@@ -3,7 +3,7 @@ import {
   getDepartementValidation,
   searchDepartementValidation,
   updateDepartementValidation,
-} from "../validations/departement-validation";
+} from "../validations/departement-validation.js";
 import { validate } from "../validations/validator.js";
 import { prismaClient } from "../apps/database.js";
 import { ResponseError } from "../errors/response-error.js";
