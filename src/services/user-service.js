@@ -4,6 +4,7 @@ import jwtHandler from "../utils/jwt-handler.js";
 import passwordHashHandler from "../utils/password-hash-handler.js";
 import {
   createUserValidation,
+  getUserValidation,
   loginUserValidation,
   updateUserValidation,
 } from "../validations/user-validation.js";
@@ -71,6 +72,8 @@ const login = async (reqBody) => {
     },
     select: {
       username: true,
+      name: true,
+      email: true,
       password: true,
       passwordExpiredAt: true,
       flagActive: true,
@@ -105,9 +108,12 @@ const login = async (reqBody) => {
   // Buat JWT untuk user yang berhasil login
   const token = jwtHandler.createJWT({
     username: findUser.username,
+    name: findUser.name,
+    email: findUser.email,
     role: findUser.role,
     departementName: findUser.departement.name,
     passwordExpiredAt: findUser.passwordExpiredAt,
+    flagActive: findUser.flagActive,
   });
 
   return {

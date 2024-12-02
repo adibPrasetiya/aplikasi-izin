@@ -103,4 +103,9 @@ const updateUserValidation = Joi.object({
   }),
 });
 
-export { createUserValidation, loginUserValidation, updateUserValidation };
+export {
+  createUserValidation,
+  loginUserValidation,
+  updateUserValidation,
+  getUserValidation,
+};
