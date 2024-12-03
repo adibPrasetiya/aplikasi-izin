@@ -25,8 +25,19 @@ protectedRoutes.delete(
   authorizationMiddleware.verifyAuthorization(["ADMIN"]),
   departementController.remove
 );
+
 protectedRoutes.patch("/api/v1/user/current", userController.update);
 protectedRoutes.get("/api/v1/user/current/logout", userController.logout);
+protectedRoutes.get(
+  "/api/v1/users/search",
+  authorizationMiddleware.verifyAuthorization(["ADMIN"]),
+  userController.search
+);
+protectedRoutes.patch(
+  "/api/v1/users/:userId",
+  authorizationMiddleware.verifyAuthorization(["ADMIN"]),
+  userController.update
+);
 
 protectedRoutes.post("/api/v1/leave/draft", leaveController.saveDraft);
 protectedRoutes.put(

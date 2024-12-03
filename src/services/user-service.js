@@ -6,6 +6,8 @@ import {
   createUserValidation,
   loginUserValidation,
   updateUserValidation,
+  searchUserValidation,
+  updateUserByAdminValidation,
 } from "../validations/user-validation.js";
 import { validate } from "../validations/validator.js";
 
@@ -198,8 +200,137 @@ const update = async (reqBody, user) => {
   };
 };
 
+const search = async (reqBody) => {
+  const validateBody = validate(searchUserValidation, reqBody);
+  const skip = (validateBody.page - 1) * validateBody.size;
+
+  // Filter berdasarkan field yang diizinkan
+  const filters = Object.entries(validateBody).reduce((acc, [key, value]) => {
+    if (value && ["name", "email", "role"].includes(key)) {
+      acc.push({ [key]: { contains: value, mode: "insensitive" } });
+    }
+    return acc;
+  }, []);
+
+  // Query pengguna dengan filter
+  const [users, totalItems] = await prismaClient.$transaction([
+    prismaClient.users.findMany({
+      where: filters.length ? { AND: filters } : {},
+      take: validateBody.size,
+      skip: skip,
+      select: {
+        username: true,
+        name: true,
+        email: true,
+        role: true,
+        flagActive: true,
+        createdAt: true,
+        passwordExpiredAt: true,
+        departement: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    }),
+    prismaClient.users.count({
+      where: filters.length ? { AND: filters } : {},
+    }),
+  ]);
+
+  return {
+    data: users,
+    paging: {
+      page: validateBody.page,
+      totalItems: totalItems,
+      totalPages: Math.ceil(totalItems / validateBody.size),
+    },
+  };
+};
+
+const updateByAdmin = async (reqBody, adminUsername) => {
+  const validateBody = validate(updateUserByAdminValidation, reqBody);
+
+  // Verifikasi currentPassword admin
+  const admin = await prismaClient.users.findUnique({
+    where: { username: adminUsername },
+    select: { password: true, passwordExpiredAt: true, role: true },
+  });
+
+  if (!admin) {
+    throw new ResponseError(403, "Akses ditolak");
+  }
+
+  if (admin.role !== "ADMIN") {
+    throw new ResponseError(403, "Akses ditolak");
+  }
+
+  const isPasswordValid = passwordHashHandler.verifyPasswordWithExpiry(
+    validateBody.currentPassword,
+    admin.password,
+    admin.passwordExpiredAt
+  );
+
+  if (!isPasswordValid) {
+    throw new ResponseError(403, "Password saat ini tidak valid");
+  }
+
+  // Ambil data user yang ingin diupdate
+  const user = await prismaClient.users.findUnique({
+    where: { username: validateBody.username },
+  });
+
+  if (!user) {
+    throw new ResponseError(404, "Pengguna tidak ditemukan");
+  }
+
+  // Siapkan data untuk diupdate
+  const updatedData = {};
+  if (validateBody.name) updatedData.name = validateBody.name;
+  if (validateBody.role) updatedData.role = validateBody.role;
+  if (validateBody.flagActive) updatedData.flagActive = validateBody.flagActive;
+  if (validateBody.password) {
+    const { newPassword, newPasswordExpiryDate } =
+      passwordHashHandler.hashPasswordWithExpiry(validateBody.password);
+    updatedData.password = newPassword;
+    updatedData.passwordExpiredAt = newPasswordExpiryDate; // Reset expired password
+  }
+
+  // Update user di database
+  const updatedUser = await prismaClient.users.update({
+    where: { username: validateBody.username },
+    data: updatedData,
+    select: {
+      username: true,
+      email: true,
+      role: true,
+      flagActive: true,
+      passwordExpiredAt: true,
+      departement: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  return {
+    message: "Data pengguna berhasil diupdate",
+    data: {
+      username: updatedUser.username,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      departementName: updatedUser.departement.name,
+      passwordExpiredAt: updatedUser.passwordExpiredAt,
+      flagActive: updatedUser.flagActive,
+    },
+  };
+};
+
 export default {
   create,
   login,
   update,
+  search,
+  updateByAdmin,
 };

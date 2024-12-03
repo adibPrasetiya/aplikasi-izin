@@ -43,9 +43,32 @@ const logout = async (req, res, next) => {
   }
 };
 
+const search = async (req, res, next) => {
+  try {
+    const result = await userService.search(req.query);
+    res.status(200).json({
+      data: result.data,
+      paging: result.paging,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateByAdmin = async (req, res, next) => {
+  try {
+    const result = await userService.updateUser(req.body, req.user.username);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   create,
   login,
   update,
   logout,
+  search,
+  updateByAdmin,
 };
