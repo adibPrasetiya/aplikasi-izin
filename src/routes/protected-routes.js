@@ -29,12 +29,12 @@ protectedRoutes.delete(
 protectedRoutes.patch("/api/v1/user/current", userController.update);
 protectedRoutes.get("/api/v1/user/current/logout", userController.logout);
 protectedRoutes.get(
-  "/api/v1/users/search",
+  "/api/v1/user/search",
   authorizationMiddleware.verifyAuthorization(["ADMIN"]),
   userController.search
 );
 protectedRoutes.patch(
-  "/api/v1/users/:userId",
+  "/api/v1/user/:userId",
   authorizationMiddleware.verifyAuthorization(["ADMIN"]),
   userController.update
 );

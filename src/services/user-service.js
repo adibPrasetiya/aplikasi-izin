@@ -164,40 +164,14 @@ const update = async (reqBody, user) => {
     ...updatedPassword,
   };
 
-  console.log(updatedData);
-
-  const updatedUser = await prismaClient.users.update({
+  await prismaClient.users.update({
     where: {
       username: validateBody.username,
     },
     data: updatedData,
-    select: {
-      name: true,
-      email: true,
-      passwordExpiredAt: true,
-      role: true,
-      departement: {
-        select: {
-          name: true,
-        },
-      },
-    },
   });
 
-  const newToken = jwtHandler.createJWT({
-    username: validateBody.username,
-    role: updatedUser.role,
-    passwordExpiredAt: updatedUser.passwordExpiredAt,
-    departementName: updatedUser.departement.name,
-  });
-
-  return {
-    token: newToken,
-    data: {
-      name: updatedUser.name,
-      email: updatedUser.email,
-    },
-  };
+  return "Update data berhasil";
 };
 
 const search = async (reqBody) => {
@@ -206,8 +180,16 @@ const search = async (reqBody) => {
 
   // Filter berdasarkan field yang diizinkan
   const filters = Object.entries(validateBody).reduce((acc, [key, value]) => {
-    if (value && ["name", "email", "role"].includes(key)) {
-      acc.push({ [key]: { contains: value, mode: "insensitive" } });
+    if (value) {
+      if (key === "role" && ["ADMIN", "MANAJER", "USER"].includes(value)) {
+        // Use the exact enum value for role
+        acc.push({ [key]: value });
+      } else if (["name", "email"].includes(key)) {
+        // Use contains for string fields
+        acc.push({ [key]: { contains: value } });
+      } else if (key === "flagActive") {
+        acc.push({ [key]: value === "false" ? false : true });
+      }
     }
     return acc;
   }, []);

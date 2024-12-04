@@ -25,8 +25,8 @@ const login = async (req, res, next) => {
 const update = async (req, res, next) => {
   try {
     const result = await userService.update(req.body, req.user);
-    res.set("Authorization", `Bearer ${result.token}`).status(200).json({
-      data: result.data,
+    res.status(200).json({
+      data: result,
     });
   } catch (error) {
     next(error);

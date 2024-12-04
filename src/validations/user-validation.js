@@ -113,11 +113,14 @@ const searchUserValidation = Joi.object({
   role: Joi.string().optional().valid("ADMIN", "USER", "MANAJER").messages({
     "any.only": "Role tidak valid",
   }),
-  page: Joi.number().integer().min(1).required().messages({
+  flagActive: Joi.string().optional().valid("true", "false").messages({
+    "any.only": "Flag Active tidak valid",
+  }),
+  page: Joi.number().integer().min(1).default(1).messages({
     "number.base": "Halaman harus berupa angka",
     "number.min": "Halaman minimal 1",
   }),
-  size: Joi.number().integer().min(1).required().messages({
+  size: Joi.number().integer().min(1).default(10).messages({
     "number.base": "Ukuran halaman harus berupa angka",
     "number.min": "Ukuran halaman minimal 1",
   }),
