@@ -57,7 +57,11 @@ const search = async (req, res, next) => {
 
 const updateByAdmin = async (req, res, next) => {
   try {
-    const result = await userService.updateUser(req.body, req.user.username);
+    const result = await userService.updateByAdmin(
+      req.body,
+      req.params.userId,
+      req.user.username
+    );
     res.status(200).json(result);
   } catch (error) {
     next(error);

@@ -230,8 +230,11 @@ const search = async (reqBody) => {
   };
 };
 
-const updateByAdmin = async (reqBody, adminUsername) => {
-  const validateBody = validate(updateUserByAdminValidation, reqBody);
+const updateByAdmin = async (reqBody, username, adminUsername) => {
+  const validateBody = validate(updateUserByAdminValidation, {
+    ...reqBody,
+    username: username,
+  });
 
   // Verifikasi currentPassword admin
   const admin = await prismaClient.users.findUnique({
@@ -272,10 +275,10 @@ const updateByAdmin = async (reqBody, adminUsername) => {
   if (validateBody.role) updatedData.role = validateBody.role;
   if (validateBody.flagActive) updatedData.flagActive = validateBody.flagActive;
   if (validateBody.password) {
-    const { newPassword, newPasswordExpiryDate } =
+    const { hash, passwordExpiredAt } =
       passwordHashHandler.hashPasswordWithExpiry(validateBody.password);
-    updatedData.password = newPassword;
-    updatedData.passwordExpiredAt = newPasswordExpiryDate; // Reset expired password
+    updatedData.password = hash;
+    updatedData.passwordExpiredAt = passwordExpiredAt; // Reset expired password
   }
 
   // Update user di database

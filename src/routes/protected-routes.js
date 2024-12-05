@@ -36,7 +36,7 @@ protectedRoutes.get(
 protectedRoutes.patch(
   "/api/v1/user/:userId",
   authorizationMiddleware.verifyAuthorization(["ADMIN"]),
-  userController.update
+  userController.updateByAdmin
 );
 
 protectedRoutes.post("/api/v1/leave/draft", leaveController.saveDraft);
