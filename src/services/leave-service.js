@@ -4,6 +4,7 @@ import {
   submitLeavesValidation,
   updateDraftValidation,
   verifyLeavesValidation,
+  searchLeaveValidation,
 } from "../validations/leaves-validation.js";
 import { validate } from "../validations/validator.js";
 import { prismaClient } from "../apps/database.js";
@@ -159,10 +160,91 @@ const removeDraft = async (userId, leaveId) => {
   return "Draft berhasil dihapus";
 };
 
+const searchLeave = async (user, reqBody) => {
+  const validatedBody = validate(searchLeaveValidation, reqBody);
+  const skip = (validatedBody.page - 1) * validatedBody.size;
+
+  const filters = {
+    AND: [],
+  };
+
+  if (user.role === "STAFF") {
+    // STAFF hanya melihat cuti miliknya sendiri
+    filters.AND.push({ userId: user.username });
+  }
+
+  if (user.role === "MANAJER") {
+    // MANAJER hanya melihat cuti yang ada di departemennya
+    const managerDepartment = await prismaClient.users.findUnique({
+      where: { username: user.username },
+      select: { departementId: true },
+    });
+
+    if (!managerDepartment) {
+      throw new Error("Departemen manajer tidak ditemukan.");
+    }
+
+    filters.AND.push({
+      user: {
+        departementId: managerDepartment.departementId,
+      },
+    });
+
+    // Filter untuk status selain DRAFT
+    filters.AND.push({
+      status: { in: ["TERKIRIM", "DITOLAK", "DITERIMA"] },
+    });
+  }
+
+  // Filter berdasarkan status (jika ada)
+  if (validatedBody.status) {
+    filters.AND.push({ status: validatedBody.status });
+  }
+
+  const [leaveRequests, totalItems] = await prismaClient.$transaction([
+    prismaClient.leaveRequests.findMany({
+      where: filters,
+      take: validatedBody.size,
+      skip: skip,
+      select: {
+        id: true,
+        startDate: true,
+        endDate: true,
+        reason: true,
+        status: true,
+        user: {
+          select: {
+            username: true,
+            name: true,
+            departement: { select: { name: true } },
+          },
+        },
+        manager: {
+          select: { username: true, name: true },
+        },
+        createdAt: true,
+      },
+    }),
+    prismaClient.leaveRequests.count({
+      where: filters,
+    }),
+  ]);
+
+  return {
+    data: leaveRequests,
+    paging: {
+      page: validatedBody.page,
+      totalItems,
+      totalPages: Math.ceil(totalItems / validatedBody.size),
+    },
+  };
+};
+
 export default {
   saveDraft,
   submitLeave,
   verifyLeave,
   updateDraft,
   removeDraft,
+  searchLeave,
 };

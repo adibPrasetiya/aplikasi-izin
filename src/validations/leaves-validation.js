@@ -72,10 +72,29 @@ const removeDraftValidation = Joi.object({
     }),
 });
 
+const searchLeaveValidation = Joi.object({
+  page: Joi.number().integer().min(1).default(1).messages({
+    "number.base": "Halaman harus berupa angka",
+    "number.min": "Halaman minimal bernilai 1",
+  }),
+  size: Joi.number().integer().min(1).default(10).messages({
+    "number.base": "Ukuran harus berupa angka",
+    "number.min": "Ukuran minimal bernilai 1",
+  }),
+  status: Joi.string()
+    .valid("DRAFT", "TERKIRIM", "DITOLAK", "DITERIMA")
+    .optional()
+    .messages({
+      "any.only":
+        "Status hanya boleh salah satu dari DRAFT, TERKIRIM, DITOLAK, atau DITERIMA",
+    }),
+});
+
 export {
   saveDraftValidation,
   submitLeavesValidation,
   updateDraftValidation,
   removeDraftValidation,
   verifyLeavesValidation,
+  searchLeaveValidation,
 };

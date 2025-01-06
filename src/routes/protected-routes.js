@@ -54,3 +54,4 @@ protectedRoutes.put(
   leaveController.updateDraft
 );
 protectedRoutes.delete("/api/v1/leave/:leaveId", leaveController.removeDraft);
+protectedRoutes.get("/api/v1/leave/search", leaveController.searchLeave);

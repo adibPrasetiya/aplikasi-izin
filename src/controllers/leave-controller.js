@@ -63,10 +63,23 @@ const removeDraft = async (req, res, next) => {
   }
 };
 
+const searchLeave = async (req, res, next) => {
+  try {
+    const result = await leaveService.searchLeave(req.user, req.query);
+    res.status(200).json({
+      data: result.data,
+      paging: result.paging,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   saveDraft,
   submitLeave,
   verifyLeave,
   updateDraft,
   removeDraft,
+  searchLeave,
 };
