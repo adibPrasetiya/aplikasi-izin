@@ -1,26 +1,46 @@
-import { PrismaClient } from "@prisma/client";
+import mysql from "mysql2/promise";
+import { DB_HOST, DB_NAME, DB_PASSWORD, DB_USER } from "../conf/constant.js";
 import { dbLogger } from "./logger.js";
 
-export const prismaClient = new PrismaClient();
+const pool = mysql.createPool({
+  host: DB_HOST,
+  user: DB_USER,
+  password: DB_PASSWORD,
+  database: DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
 
-// prismaClient.$use(async (params, next) => {
-//   const startTime = Date.now();
+export const query = async (sql, params) => {
+  const connection = await pool.getConnection();
+  try {
+    const startTime = Date.now();
 
-//   dbLogger.info("DATABASE QUERY STARTED", {
-//     query: params.model + "." + params.action,
-//     args: params.args,
-//   });
+    dbLogger.info("DATABASE QUERY STARTED", {
+      query: sql,
+      params,
+    });
 
-//   const result = await next(params);
+    const [rows] = await connection.query(sql, params);
 
-//   //logging setelah query selesai
-//   const duration = Date.now() - startTime;
+    const duration = Date.now() - startTime;
 
-//   dbLogger.info("DATABASE QUERY COMPLETED", {
-//     query: params.model + "." + params.action,
-//     duration: `${duration}ms`,
-//     result,
-//   });
+    dbLogger.info("DATABASE QUERY COMPLETED", {
+      query: sql,
+      duration: `${duration}ms`,
+      result: rows,
+    });
 
-//   return result;
-// });
+    return rows;
+  } catch (error) {
+    dbLogger.error("DATABASE QUERY FAILED", {
+      query: sql,
+      params,
+      error: error.message,
+    });
+    throw error;
+  } finally {
+    connection.release();
+  }
+};

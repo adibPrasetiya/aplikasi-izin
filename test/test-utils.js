@@ -98,14 +98,14 @@ export const createActiveTestUser = async () => {
 export const generateTestAdminToken = () => {
   return jwtHandler.createJWT({
     username: "test.admin",
-    role: "ADMIN",
+    role: "admin",
   });
 };
 
 export const generateTestManajerToken = () => {
   return jwtHandler.createJWT({
     username: "test.manajer",
-    role: "MANAJER",
+    role: "manajer",
   });
 };
 

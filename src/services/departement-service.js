@@ -5,78 +5,64 @@ import {
   updateDepartementValidation,
 } from "../validations/departement-validation.js";
 import { validate } from "../validations/validator.js";
-import { prismaClient } from "../apps/database.js";
+import { query } from "../apps/database.js";
 import { ResponseError } from "../errors/response-error.js";
 
 const create = async (reqBody) => {
   reqBody = validate(createDepartementValidation, reqBody);
 
-  // pengecekan duplikasi nama dan email departement
-  const existingDepartements = await prismaClient.departements.findFirst({
-    where: {
-      OR: [{ name: reqBody.name }, { email: reqBody.email }],
-    },
-    select: {
-      name: true,
-      email: true,
-    },
-  });
+  // Pengecekan duplikasi nama dan email departemen
+  const existingDepartements = await query(
+    `SELECT name, email FROM departements WHERE name = ? OR email = ?`,
+    [reqBody.name, reqBody.email]
+  );
 
-  if (existingDepartements) {
+  if (existingDepartements.length > 0) {
     const errorMessage =
-      existingDepartements.name === reqBody.name
-        ? "Nama departement sudah terdaftar"
-        : "Email departement sudah terdaftar";
+      existingDepartements[0].name === reqBody.name
+        ? "Nama departemen sudah terdaftar"
+        : "Email departemen sudah terdaftar";
     throw new ResponseError(400, errorMessage);
   }
 
-  // buat departement baru
-  return prismaClient.departements.create({
-    data: {
-      name: reqBody.name,
-      email: reqBody.email,
-    },
-    select: {
-      departementId: true,
-      name: true,
-      email: true,
-    },
-  });
+  // Buat departemen baru
+  const result = await query(
+    `INSERT INTO departements (name, email) VALUES (?, ?)`,
+    [reqBody.name, reqBody.email]
+  );
+
+  return {
+    departementId: result.insertId,
+    name: reqBody.name,
+    email: reqBody.email,
+  };
 };
 
 const get = async (departementId) => {
   departementId = validate(getDepartementValidation, departementId);
 
-  const departement = await prismaClient.departements.findUnique({
-    where: {
-      departementId: departementId,
-    },
-    select: {
-      departementId: true,
-      name: true,
-      email: true,
-    },
-  });
+  const [departement] = await query(
+    `SELECT departementId, name, email FROM departements WHERE departementId = ?`,
+    [departementId]
+  );
 
   if (!departement) {
-    throw new ResponseError(404, "Departement tidak ditemukan");
+    throw new ResponseError(404, "Departemen tidak ditemukan");
   }
 
   return departement;
 };
 
 const update = async (departementId, reqBody) => {
-  // Tambahkan ID ke dalam body
   const validatedBody = validate(updateDepartementValidation, {
     ...reqBody,
     departementId,
   });
 
-  // Gunakan findUnique untuk langsung memeriksa keberadaan departemen
-  const existingDepartement = await prismaClient.departements.findUnique({
-    where: { departementId },
-    select: { departementId: true }, // Hanya ambil data minimum
-  });
+  const [existingDepartement] = await query(
+    `SELECT departementId FROM departements WHERE departementId = ?`,
+    [departementId]
+  );
 
   if (!existingDepartement) {
     throw new ResponseError(
@@ -85,35 +71,41 @@ const update = async (departementId, reqBody) => {
     );
   }
 
-  const updatedData = {
-    ...(validatedBody.name && { name: validatedBody.name }),
-    ...(validatedBody.email && { email: validatedBody.email }),
-  };
+  const updatedFields = [];
+  const updatedValues = [];
 
-  // Lakukan update
-  return prismaClient.departements.update({
-    where: { departementId },
-    data: updatedData,
-    select: {
-      departementId: true,
-      name: true,
-      email: true,
-    },
-  });
+  if (validatedBody.name) {
+    updatedFields.push("name = ?");
+    updatedValues.push(validatedBody.name);
+  }
+
+  if (validatedBody.email) {
+    updatedFields.push("email = ?");
+    updatedValues.push(validatedBody.email);
+  }
+
+  updatedValues.push(departementId);
+
+  await query(
+    `UPDATE departements SET ${updatedFields.join(
+      ", "
+    )} WHERE departementId = ?`,
+    updatedValues
+  );
+
+  return get(departementId);
 };
 
 const remove = async (departementId) => {
-  // Validasi departementId
   const validatedDepartementId = validate(
     getDepartementValidation,
     departementId
   );
 
-  // Cek keberadaan departemen menggunakan findUnique untuk efisiensi
-  const existingDepartement = await prismaClient.departements.findUnique({
-    where: { departementId: validatedDepartementId },
-    select: { departementId: true },
-  });
+  const [existingDepartement] = await query(
+    `SELECT departementId FROM departements WHERE departementId = ?`,
+    [validatedDepartementId]
+  );
 
   if (!existingDepartement) {
     throw new ResponseError(
@@ -122,10 +114,9 @@ const remove = async (departementId) => {
     );
   }
 
-  // Hapus departemen
-  await prismaClient.departements.delete({
-    where: { departementId: validatedDepartementId },
-  });
+  await query(`DELETE FROM departements WHERE departementId = ?`, [
+    validatedDepartementId,
+  ]);
 
   return "OK";
 };
@@ -134,23 +125,32 @@ const search = async (reqBody) => {
   const validateBody = validate(searchDepartementValidation, reqBody);
   const skip = (validateBody.page - 1) * validateBody.size;
 
-  const filters = Object.entries(validateBody).reduce((acc, [key, value]) => {
-    if (value && ["name", "email"].includes(key)) {
-      acc.push({ [key]: { contains: value } });
-    }
-    return acc;
-  }, []);
+  const filters = [];
+  const filterValues = [];
 
-  const [departements, totalItems] = await prismaClient.$transaction([
-    prismaClient.departements.findMany({
-      where: filters.length ? { AND: filters } : {},
-      take: validateBody.size,
-      skip: skip,
-    }),
-    prismaClient.departements.count({
-      where: filters.length ? { AND: filters } : {},
-    }),
-  ]);
+  if (validateBody.name) {
+    filters.push("name LIKE ?");
+    filterValues.push(`%${validateBody.name}%`);
+  }
+
+  if (validateBody.email) {
+    filters.push("email LIKE ?");
+    filterValues.push(`%${validateBody.email}%`);
+  }
+
+  const whereClause = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+
+  const departements = await query(
+    `SELECT departementId, name, email FROM departements ${whereClause} LIMIT ? OFFSET ?`,
+    [...filterValues, validateBody.size, skip]
+  );
+
+  const [totalItemsRow] = await query(
+    `SELECT COUNT(*) as totalItems FROM departements ${whereClause}`,
+    filterValues
+  );
+
+  const totalItems = totalItemsRow.totalItems;
 
   return {
     data: departements,

@@ -6,10 +6,9 @@ import {
   verifyLeavesValidation,
 } from "../validations/leaves-validation.js";
 import { validate } from "../validations/validator.js";
-import { prismaClient } from "../apps/database.js";
+import { query } from "../apps/database.js";
 import { ResponseError } from "../errors/response-error.js";
 
-// Membuat atau mengupdate izin cuti dalam status DRAFT
 const saveDraft = async (user, leaveData) => {
   const validateBody = validate(saveDraftValidation, {
     ...leaveData,
@@ -18,59 +17,53 @@ const saveDraft = async (user, leaveData) => {
   const { startDate, endDate, reason, username } = validateBody;
 
   // Simpan atau update data DRAFT
-  const draft = await prismaClient.leaveRequests.create({
-    data: {
-      userId: username,
-      startDate,
-      endDate,
-      reason,
-      status: "DRAFT",
-    },
-  });
+  const result = await query(
+    `INSERT INTO leaveRequests (userId, startDate, endDate, reason, status) VALUES (?, ?, ?, ?, 'DRAFT')`,
+    [username, startDate, endDate, reason]
+  );
 
-  return draft;
+  return {
+    id: result.insertId,
+    userId: username,
+    startDate,
+    endDate,
+    reason,
+    status: "DRAFT",
+  };
 };
 
-// Mengirim izin cuti
 const submitLeave = async (user, leaveId) => {
   const validateBody = validate(submitLeavesValidation, { leaveId: leaveId });
 
-  const draft = await prismaClient.leaveRequests.findFirst({
-    where: {
-      id: validateBody.leaveId,
-      userId: user.username,
-      status: "DRAFT",
-    },
-  });
+  const [draft] = await query(
+    `SELECT id FROM leaveRequests WHERE id = ? AND userId = ? AND status = 'DRAFT'`,
+    [validateBody.leaveId, user.username]
+  );
 
   if (!draft) {
     throw new ResponseError(404, "Draft izin cuti tidak ditemukan");
   }
 
-  // Perbarui status menjadi TERKIRIM
-  const sendDraft = await prismaClient.leaveRequests.update({
-    where: {
-      id: draft.id,
-    },
-    data: {
-      status: "TERKIRIM",
-    },
-  });
+  await query(`UPDATE leaveRequests SET status = 'TERKIRIM' WHERE id = ?`, [
+    draft.id,
+  ]);
 
-  return sendDraft;
+  return {
+    id: draft.id,
+    status: "TERKIRIM",
+  };
 };
 
-// Verifikasi izin cuti oleh manajer
 const verifyLeave = async (managerId, leaveId, action) => {
   const validateBody = validate(verifyLeavesValidation, {
     id: leaveId,
     action: action,
   });
 
-  const leaveRequest = await prismaClient.leaveRequests.findUnique({
-    where: { id: validateBody.leaveId },
-    include: { user: true },
-  });
+  const [leaveRequest] = await query(
+    `SELECT id, status, managerId FROM leaveRequests WHERE id = ?`,
+    [validateBody.id]
+  );
 
   if (!leaveRequest || leaveRequest.status !== "TERKIRIM") {
     throw new ResponseError(
@@ -88,12 +81,10 @@ const verifyLeave = async (managerId, leaveId, action) => {
     throw new ResponseError(400, "Aksi tidak valid");
   }
 
-  await prismaClient.leaveRequests.update({
-    where: { id: validateBody.leaveId },
-    data: {
-      status: validateBody.action,
-    },
-  });
+  await query(`UPDATE leaveRequests SET status = ? WHERE id = ?`, [
+    validateBody.action,
+    leaveRequest.id,
+  ]);
 
   return {
     message: `Izin cuti berhasil ${
@@ -102,59 +93,64 @@ const verifyLeave = async (managerId, leaveId, action) => {
   };
 };
 
-// edit draft izin cuti oleh user
 const updateDraft = async (userId, leaveId, updatedData) => {
   const validateBody = validate(updateDraftValidation, {
     ...updatedData,
     leaveId: leaveId,
   });
 
-  const findDraft = await prismaClient.leaveRequests.findUnique({
-    where: {
-      id: validateBody.leaveId,
-      userId: userId,
-    },
-    select: {
-      id: true,
-    },
-  });
+  const [findDraft] = await query(
+    `SELECT id FROM leaveRequests WHERE id = ? AND userId = ?`,
+    [validateBody.leaveId, userId]
+  );
 
   if (!findDraft) {
     throw new ResponseError(404, "Draft tidak ditemukan");
   }
 
-  return prismaClient.leaveRequests.update({
-    where: {
-      id: findDraft.id,
-      userId: userId,
-    },
-    data: validateBody.updatedData,
-  });
+  const updatedFields = [];
+  const updatedValues = [];
+
+  if (validateBody.startDate) {
+    updatedFields.push("startDate = ?");
+    updatedValues.push(validateBody.startDate);
+  }
+
+  if (validateBody.endDate) {
+    updatedFields.push("endDate = ?");
+    updatedValues.push(validateBody.endDate);
+  }
+
+  if (validateBody.reason) {
+    updatedFields.push("reason = ?");
+    updatedValues.push(validateBody.reason);
+  }
+
+  updatedValues.push(findDraft.id);
+
+  await query(
+    `UPDATE leaveRequests SET ${updatedFields.join(", ")} WHERE id = ?`,
+    updatedValues
+  );
+
+  return {
+    id: findDraft.id,
+    ...updatedData,
+  };
 };
 
-//hapus draft oleh cuti
 const removeDraft = async (userId, leaveId) => {
   const validateBody = validate(removeDraftValidation, { leaveId: leaveId });
-  const findDraft = await prismaClient.leaveRequests.findUnique({
-    where: {
-      id: validateBody.leaveId,
-      userId: userId,
-    },
-    select: {
-      id: true,
-    },
-  });
+  const [findDraft] = await query(
+    `SELECT id FROM leaveRequests WHERE id = ? AND userId = ?`,
+    [validateBody.leaveId, userId]
+  );
 
   if (!findDraft) {
     throw new ResponseError(404, "Draft tidak ditemukan");
   }
 
-  await prismaClient.leaveRequests.delete({
-    where: {
-      id: validateBody.leaveId,
-      userId: userId,
-    },
-  });
+  await query(`DELETE FROM leaveRequests WHERE id = ?`, [findDraft.id]);
 
   return "Draft berhasil dihapus";
 };

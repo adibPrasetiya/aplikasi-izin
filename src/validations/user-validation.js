@@ -48,17 +48,10 @@ const createUserValidation = Joi.object({
 });
 
 const loginUserValidation = Joi.object({
-  username: Joi.string()
-    .required()
-    .min(3)
-    .max(100)
-    .regex(/^(?=.{3,100}$)(?![_.])(?!.*[_.]{2})[a-zA-Z0-9._]+(?<![_.])$/)
-    .messages({
-      "string.min": "Panjang username minimal 3 karakter",
-      "string.max": "Panjang username maksimal 100 karakter",
-      "string.pattern.base":
-        "Username hanya terdiri karakter huruf, angka, titik dan underscore",
-    }),
+  username: Joi.string().required().min(3).max(100).messages({
+    "string.min": "Panjang username minimal 3 karakter",
+    "string.max": "Panjang username maksimal 100 karakter",
+  }),
   password: Joi.string().required().min(6).max(100).messages({
     "string.min": "Panjang password minimal 6 karakter",
     "string.max": "Panjang password maksimal 100 karakter",
@@ -110,7 +103,7 @@ const searchUserValidation = Joi.object({
   email: Joi.string().optional().email().messages({
     "string.email": "Format email tidak valid",
   }),
-  role: Joi.string().optional().valid("ADMIN", "USER", "MANAJER").messages({
+  role: Joi.string().optional().valid("admin", "user", "manajer").messages({
     "any.only": "Role tidak valid",
   }),
   flagActive: Joi.string().optional().valid("true", "false").messages({
@@ -141,7 +134,7 @@ const updateUserByAdminValidation = Joi.object({
       "string.pattern.base":
         "Username hanya terdiri dari huruf, angka, titik, dan underscore",
     }),
-  role: Joi.string().optional().valid("ADMIN", "USER", "MANAJER").messages({
+  role: Joi.string().optional().valid("admin", "user", "manajer").messages({
     "any.only": "Role tidak valid",
   }),
   flagActive: Joi.boolean().optional().messages({

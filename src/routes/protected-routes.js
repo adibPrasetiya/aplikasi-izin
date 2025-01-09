@@ -8,7 +8,7 @@ export const protectedRoutes = new Router();
 
 protectedRoutes.post(
   "/api/v1/departement",
-  authorizationMiddleware.verifyAuthorization(["ADMIN"]),
+  authorizationMiddleware.verifyAuthorization(["admin"]),
   departementController.create
 );
 protectedRoutes.get(
@@ -17,12 +17,12 @@ protectedRoutes.get(
 );
 protectedRoutes.patch(
   "/api/v1/departement/:departementId",
-  authorizationMiddleware.verifyAuthorization(["ADMIN"]),
+  authorizationMiddleware.verifyAuthorization(["admin"]),
   departementController.update
 );
 protectedRoutes.delete(
   "/api/v1/departement/:departementId",
-  authorizationMiddleware.verifyAuthorization(["ADMIN"]),
+  authorizationMiddleware.verifyAuthorization(["admin"]),
   departementController.remove
 );
 
@@ -30,12 +30,12 @@ protectedRoutes.patch("/api/v1/user/current", userController.update);
 protectedRoutes.get("/api/v1/user/current/logout", userController.logout);
 protectedRoutes.get(
   "/api/v1/user/search",
-  authorizationMiddleware.verifyAuthorization(["ADMIN"]),
+  authorizationMiddleware.verifyAuthorization(["admin"]),
   userController.search
 );
 protectedRoutes.patch(
   "/api/v1/user/:userId",
-  authorizationMiddleware.verifyAuthorization(["ADMIN"]),
+  authorizationMiddleware.verifyAuthorization(["admin"]),
   userController.updateByAdmin
 );
 
@@ -46,7 +46,7 @@ protectedRoutes.put(
 );
 protectedRoutes.put(
   "/api/v1/leave/:leaveId/verify",
-  authorizationMiddleware.verifyAuthorization(["MANAJER"]),
+  authorizationMiddleware.verifyAuthorization(["manajer"]),
   leaveController.verifyLeave
 );
 protectedRoutes.put(
